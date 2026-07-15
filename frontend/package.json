@@ -1,11 +1,12 @@
 {
-  "name": "event_management_site",
-  "version": "0.1.0",
+  "name": "sambaram-events",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "start": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next start",
+    "prod": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint"
   },
   "dependencies": {
