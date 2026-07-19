@@ -28,17 +28,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
+from google import genai
 
 # Load env
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
+
+import os
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("sambaram")
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 BUSINESS_EMAIL = os.environ.get("BUSINESS_EMAIL", "hello@sambaram.events")
 BUSINESS_WHATSAPP = os.environ.get("BUSINESS_WHATSAPP", "+919876543210")
 
@@ -327,7 +333,28 @@ def _strip_mongo(doc: dict[str, Any]) -> dict[str, Any]:
     doc.pop("_id", None)
     return doc
 
+async def _send_telegram(message: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram credentials missing")
+        return False
 
+    import httpx
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        r = await client.post(
+            url,
+            json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message,
+            },
+        )
+
+    print("Telegram status:", r.status_code)
+    print("Telegram response:", r.text)
+
+    return r.status_code == 200
 async def _notify_team(lead: dict[str, Any]) -> dict[str, Any]:
     """Send WhatsApp + email notifications. Falls back to DB queue when creds absent."""
     result: dict[str, Any] = {"whatsapp": "queued", "email": "queued"}
@@ -350,6 +377,8 @@ async def _notify_team(lead: dict[str, Any]) -> dict[str, Any]:
         f"Theme: {summary.get('theme') or planner.get('theme', 'N/A')}",
     ]
     message = "\n".join(message_lines)
+    telegram_ok = await _send_telegram(message)
+    result["telegram"] = "sent" if telegram_ok else "failed"
 
     # WhatsApp
     if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM:
@@ -468,36 +497,47 @@ def _build_ai_prompt(topic: str, context: dict[str, Any]) -> tuple[str, str]:
     user_msg = prompts.get(topic, f"Give thoughtful guidance for this event.\n\n{_ctx()}")
     return system, user_msg
 
-
 @app.post("/api/ai/suggest")
 async def ai_suggest(req: AISuggestRequest) -> StreamingResponse:
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(500, "AI is not configured")
+    if not GEMINI_API_KEY:
+        raise HTTPException(500, "Gemini API is not configured")
 
-    from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     system_msg, user_text = _build_ai_prompt(req.topic, req.context)
-    session_id = req.session_id or str(uuid.uuid4())
 
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=session_id,
-        system_message=system_msg,
-    ).with_model("anthropic", "claude-sonnet-4-6")
+    prompt = f"""
+{system_msg}
+
+{user_text}
+"""
+
+    session_id = req.session_id or str(uuid.uuid4())
 
     async def event_gen():
         full = []
+
         try:
-            async for ev in chat.stream_message(UserMessage(text=user_text)):
-                if isinstance(ev, TextDelta):
-                    full.append(ev.content)
-                    yield f"data: {json.dumps({'delta': ev.content})}\n\n"
-                elif isinstance(ev, StreamDone):
-                    break
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("AI stream failed")
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
-        # log
+            stream = client.models.generate_content_stream(
+               model="gemini-3.5-flash",
+                contents=prompt,
+            )
+
+            for chunk in stream:
+                if chunk.text:
+                    full.append(chunk.text)
+
+                    yield (
+                        f"data: {json.dumps({'delta': chunk.text})}\n\n"
+                    )
+
+        except Exception as exc:
+            logger.exception("Gemini stream failed")
+
+            yield (
+                f"data: {json.dumps({'error': str(exc)})}\n\n"
+            )
+
         await db["ai_logs"].insert_one({
             "id": str(uuid.uuid4()),
             "session_id": session_id,
@@ -506,14 +546,17 @@ async def ai_suggest(req: AISuggestRequest) -> StreamingResponse:
             "response": "".join(full),
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
+
         yield f"data: {json.dumps({'done': True})}\n\n"
 
     return StreamingResponse(
         event_gen(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
-
 
 # ---------- Leads ----------
 
