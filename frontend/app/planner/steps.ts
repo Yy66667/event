@@ -1,4 +1,5 @@
-export type PlannerAnswers = {
+export interface PlannerAnswers {
+  // Single select
   event_type?: string;
   event_date?: string;
   city?: string;
@@ -7,32 +8,36 @@ export type PlannerAnswers = {
   guest_count?: string;
   budget?: string;
   theme?: string;
-  decoration_style?: string;
-  catering?: string;
-  photography?: string;
-  videography?: string;
-  entertainment?: string;
+  special_requests?: string;
+
+  // Multi select
+  priorities?: string[];
+  catering?: string[];
+  photography?: string[];
+  entertainment?: string[];
+
+  // Wedding only
   makeup?: string;
   accommodation?: string;
   transportation?: string;
-  additional_services?: string[];
-  special_requests?: string;
-};
+}
 
 export type StepDef = {
   id: keyof PlannerAnswers;
   title: string;
   subtitle: string;
   eyebrow: string;
-  type: "choice" | "date" | "text" | "number" | "textarea" | "multi";
+  type: "choice" | "date" | "text" | "number" | "textarea" | 
+"multi";
   options?: string[];
   placeholder?: string;
-  aiTopic?: "theme" | "budget" | "timeline" | "decor" | "services" | "summary";
+  aiTopic?: "theme" | "budget" | "timeline" | "decor" | 
+"services" | "summary";
   aiLabel?: string;
   optional?: boolean;
 };
 
-export const STEPS: StepDef[] = [
+export const COMMON_STEPS: StepDef[] = [
   {
     id: "event_type",
     eyebrow: "Occasion",
@@ -121,6 +126,25 @@ export const STEPS: StepDef[] = [
     aiLabel: "Ask AI for a realistic breakdown",
   },
   {
+  id: "priorities",
+  eyebrow: "Priorities",
+  title: "What matters most for your event?",
+  subtitle: "This helps us personalize your planning experience.",
+  type: "multi",
+  options: [
+    "Beautiful Decoration",
+    "Amazing Food",
+    "Entertainment",
+    "Photography",
+    "Guest Experience",
+    "Stress-Free Planning",
+    "Need Guidance",
+  ],
+}
+];
+
+export const SHARED_SERVICE_STEPS: StepDef[] = [
+  {
     id: "theme",
     eyebrow: "Aesthetic",
     title: "Any theme in mind?",
@@ -131,29 +155,11 @@ export const STEPS: StepDef[] = [
     aiLabel: "Suggest themes for me",
   },
   {
-    id: "decoration_style",
-    eyebrow: "Décor",
-    title: "Decoration style?",
-    subtitle: "Pick the closest match — we'll layer detail later.",
-    type: "choice",
-    options: [
-      "Traditional South-Indian",
-      "Boho / Rustic",
-      "Modern Minimal",
-      "Regal / Palace",
-      "Floral & Whimsical",
-      "Cinematic Dark",
-      "Open to suggestions",
-    ],
-    aiTopic: "decor",
-    aiLabel: "Show me signature décor ideas",
-  },
-  {
     id: "catering",
     eyebrow: "Cuisine",
     title: "Catering preference?",
     subtitle: "We'll match you with vetted culinary partners.",
-    type: "choice",
+    type: "multi",
     options: [
       "Vegetarian",
       "Veg + Non-Veg",
@@ -168,7 +174,7 @@ export const STEPS: StepDef[] = [
     eyebrow: "Memory",
     title: "Photography level?",
     subtitle: "How you want the day captured.",
-    type: "choice",
+    type: "multi",
     options: [
       "Essential Coverage",
       "Premium Coverage",
@@ -177,25 +183,11 @@ export const STEPS: StepDef[] = [
     ],
   },
   {
-    id: "videography",
-    eyebrow: "Film",
-    title: "Videography level?",
-    subtitle: "The kind of film you want to remember it by.",
-    type: "choice",
-    options: [
-      "Highlight Reel",
-      "Full Wedding Film",
-      "Cinematic Documentary",
-      "Drone & Aerials",
-      "Not required",
-    ],
-  },
-  {
     id: "entertainment",
     eyebrow: "Vibe",
     title: "Entertainment?",
     subtitle: "Live music, DJs, performances, or something bespoke.",
-    type: "choice",
+    type: "multi",
     options: [
       "DJ",
       "Live Band",
@@ -204,78 +196,67 @@ export const STEPS: StepDef[] = [
       "Custom Choreography",
       "Not required",
     ],
-  },
-  {
-    id: "makeup",
-    eyebrow: "Styling",
-    title: "Makeup & styling?",
-    subtitle: "For the bride, groom, family or none.",
-    type: "choice",
-    options: [
-      "Bride only",
-      "Bride + Family",
-      "Full Bridal Party",
-      "Groom + Family",
-      "Not required",
-    ],
-    optional: true,
-  },
-  {
-    id: "accommodation",
-    eyebrow: "Stay",
-    title: "Guest accommodation?",
-    subtitle: "For out-of-town guests, if any.",
-    type: "choice",
-    options: [
-      "Not required",
-      "Small (under 20 rooms)",
-      "Medium (20–75 rooms)",
-      "Large (75+ rooms)",
-    ],
-    optional: true,
-  },
-  {
-    id: "transportation",
-    eyebrow: "Travel",
-    title: "Transportation?",
-    subtitle: "Airport pickups, guest transfers, vintage cars.",
-    type: "choice",
-    options: [
-      "Not required",
-      "Airport transfers",
-      "Guest shuttles",
-      "Vintage / Themed vehicles",
-      "Full coordination",
-    ],
-    optional: true,
-  },
-  {
-    id: "additional_services",
-    eyebrow: "Extras",
-    title: "Any additional services?",
-    subtitle: "Pick anything you'd like us to arrange.",
-    type: "multi",
-    options: [
-      "Priest / Purohit",
-      "Mehendi Artist",
-      "Choreographer",
-      "Return Gifts",
-      "Custom Stationery",
-      "Fireworks",
-      "Live Streaming",
-      "Guest Concierge",
-    ],
-    optional: true,
-    aiTopic: "services",
-    aiLabel: "What should I invest in?",
-  },
-  {
-    id: "special_requests",
-    eyebrow: "Personal",
-    title: "Anything else we should know?",
-    subtitle: "Family traditions, dietary needs, dreams you can't yet describe.",
-    type: "textarea",
-    placeholder: "Share anything on your mind…",
-    optional: true,
-  },
+  },{
+  id: "special_requests",
+  eyebrow: "Personal",
+  title: "Anything else we should know?",
+  subtitle: "Family traditions, dietary needs, dreams you can't yet describe.",
+  type: "textarea",
+  placeholder: "Share anything on your mind…",
+  optional: true,
+  aiTopic: "summary",
+  aiLabel: "Help me describe my event",
+},
+];
+
+export const EVENT_STEPS: Record<string, StepDef[]> = {
+  Wedding: [
+    {
+      id: "makeup",
+      eyebrow: "Styling",
+      title: "Makeup & styling?",
+      subtitle: "For the bride, groom, family or none.",
+      type: "choice",
+      options: ["Bride only", "Bride + Family", "Full Bridal Party"],
+    },
+    {
+      id: "accommodation",
+      eyebrow: "Stay",
+      title: "Guest accommodation?",
+      subtitle: "For out-of-town guests, if any.",
+      type: "choice",
+      options: [
+        "Not required",
+        "Small (under 20 rooms)",
+        "Medium (20–75 rooms)",
+        "Large (75+ rooms)",
+      ],
+    },
+    {
+      id: "transportation",
+      eyebrow: "Travel",
+      title: "Transportation?",
+      subtitle: "Airport pickups, guest transfers, vintage cars.",
+      type: "choice",
+      options: [
+        "Not required",
+        "Airport transfers",
+        "Guest shuttles",
+        "Vintage / Themed vehicles",
+        "Full coordination",
+      ],
+    },
+  ],
+  Birthday: [],
+  Housewarming: [],
+  "Baby Shower": [],
+  "Engagement": [],
+  "Corporate Event": [],
+  "Private Party": [],
+};
+
+export const activeSteps = (eventType: string): StepDef[] => [
+  ...COMMON_STEPS,
+  ...SHARED_SERVICE_STEPS,
+  ...(EVENT_STEPS[eventType] ?? []),
 ];

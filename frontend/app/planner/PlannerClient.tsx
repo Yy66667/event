@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +13,7 @@ import {
   Loader2,
   CheckCircle2,
 } from "lucide-react";
-import { STEPS, PlannerAnswers } from "./steps";
+import { activeSteps, PlannerAnswers } from "./steps";
 import AISuggestButton from "./AISuggestButton";
 import { API_BASE } from "../lib/constants";
 
@@ -24,25 +24,59 @@ export default function PlannerClient() {
   const [stage, setStage] = useState<Stage>("steps");
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<PlannerAnswers>({});
-  const [editingId, setEditingId] = useState<keyof PlannerAnswers | null>(null);
+  const noticeDays: Record<string, number> = {
+                                          Wedding: 30,
+                                          Engagement: 21,
+                                          "Baby Shower": 14,
+                                          "Corporate Event": 14,
+                                          Birthday: 7,
+                                          Housewarming: 7,
+                                          "Private Party": 7,
+                                        };
 
-  const step = STEPS[current];
-  const total = STEPS.length;
+  const minDate = new Date();
+  minDate.setDate(
+    minDate.getDate() + (noticeDays[answers.event_type ?? ""] ?? 7)
+  );
+
+  const minDateString = minDate.toISOString().split("T")[0];
+  
+    
+  const steps = activeSteps(answers.event_type ?? "");
+  const step = steps[Math.min(current, steps.length - 1)];
+  const total = steps.length;
   const progress = Math.round(((current + 1) / total) * 100);
+
+  useEffect(() => {
+  if (current >= steps.length) {
+    setCurrent(Math.max(steps.length - 1, 0));
+  }
+}, [current, steps.length]);
 
   const setValue = (id: keyof PlannerAnswers, value: string | string[]) => {
     setAnswers((a) => ({ ...a, [id]: value }));
   };
 
-  const toggleMulti = (id: keyof PlannerAnswers, opt: string) => {
-    setAnswers((a) => {
-      const arr = ((a[id] as string[]) || []).slice();
-      const idx = arr.indexOf(opt);
-      if (idx >= 0) arr.splice(idx, 1);
-      else arr.push(opt);
-      return { ...a, [id]: arr };
-    });
-  };
+ const toggleMulti = (id: keyof PlannerAnswers, opt: string) => {
+  setAnswers((a) => {
+    const current = a[id];
+
+    const arr = Array.isArray(current) ? [...current] : [];
+
+    const idx = arr.indexOf(opt);
+
+    if (idx >= 0) {
+      arr.splice(idx, 1);
+    } else {
+      arr.push(opt);
+    }
+
+    return {
+      ...a,
+      [id]: arr,
+    };
+  });
+};
 
   const canProceed = useMemo(() => {
     if (step.optional) return true;
@@ -129,7 +163,7 @@ export default function PlannerClient() {
       return (
         <input
           type="date"
-          data-testid={`input-${step.id}`}
+          min={minDateString}
           value={(v as string) || ""}
           onChange={(e) => setValue(step.id, e.target.value)}
           className="mt-8 w-full max-w-md px-5 py-4 rounded-2xl border border-line-strong bg-card text-ink text-lg focus:border-burnt outline-none"
@@ -164,7 +198,7 @@ export default function PlannerClient() {
   };
 
   // ---------- Summary ----------
-  const summaryRows = STEPS.map((s) => {
+  const summaryRows = steps.map((s) => {
     const v = answers[s.id];
     if (!v || (Array.isArray(v) && v.length === 0)) return null;
     return {
@@ -331,7 +365,7 @@ export default function PlannerClient() {
                 <span className="eyebrow">Your Event · At a glance</span>
               </div>
               <h1 className="mt-4 h-display text-4xl sm:text-5xl text-ink">
-                Beautiful. Here's what we've heard.
+                {`Beautiful. Here's what we've heard.`}
               </h1>
               <p className="mt-4 text-muted max-w-xl leading-relaxed">
                 Review the details. Tap any row to edit before we send it to our specialist.
@@ -351,32 +385,22 @@ export default function PlannerClient() {
                       className="py-4 flex items-start gap-4 group"
                       data-testid={`summary-row-${row.id as string}`}
                     >
-                      <div className="w-32 flex-shrink-0 text-[10px] tracking-[0.24em] uppercase text-muted pt-1">
+                      <div className="w-32 shrink-0 text-[10px] tracking-[0.24em] uppercase text-muted pt-1">
                         {row.eyebrow}
                       </div>
                       <div className="flex-1">
-                        {editingId === row.id ? (
-                          <input
-                            autoFocus
-                            defaultValue={row.value}
-                            onBlur={(e) => {
-                              setValue(row.id, e.target.value);
-                              setEditingId(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                setValue(row.id, (e.target as HTMLInputElement).value);
-                                setEditingId(null);
-                              }
-                            }}
-                            className="w-full px-3 py-2 rounded-lg border border-burnt bg-white text-ink outline-none"
-                          />
-                        ) : (
+                       (
                           <div className="text-ink">{row.value}</div>
-                        )}
+                        )
                       </div>
                       <button
-                        onClick={() => setEditingId(row.id)}
+                        onClick={() => {
+                          const index = steps.findIndex((s) => s.id === row.id);
+                          if (index !== -1) {
+                            setCurrent(index);
+                            setStage("steps");
+                          }
+                        }}
                         className="opacity-40 group-hover:opacity-100 text-ink hover:text-burnt transition"
                         data-testid={`edit-${row.id as string}`}
                       >
