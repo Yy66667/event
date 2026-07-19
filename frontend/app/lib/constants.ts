@@ -1,7 +1,7 @@
 export const BRAND = {
   name: "SAMBARAM",
   tagline: "Heirloom Event Planning Studio",
-  phone: "+91 98765 43210",
+  phone: "+919876543210",
   phoneRaw: "+919876543210",
   whatsapp: "+919876543210",
   email: "hello@sambaram.events",

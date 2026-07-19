@@ -11,6 +11,7 @@ import {
   MapPin,
   Send,
   Loader2,
+  ChevronDown,
   ArrowUpRight,
   CheckCircle2,
 } from "lucide-react";
@@ -23,6 +24,23 @@ const CONTACT_CARDS = [
   { icon: Instagram, label: "Instagram", value: `@${BRAND.instagram}`, href: BRAND.instagramUrl, testId: "instagram" },
 ];
 
+// Common country dial codes — extend as needed
+const COUNTRY_CODES = [
+  { code: "IN", dial: "+91", label: "India (+91)" },
+  { code: "US", dial: "+1", label: "USA/Canada (+1)" },
+  { code: "GB", dial: "+44", label: "UK (+44)" },
+  { code: "AE", dial: "+971", label: "UAE (+971)" },
+  { code: "AU", dial: "+61", label: "Australia (+61)" },
+  { code: "SG", dial: "+65", label: "Singapore (+65)" },
+];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Basic sanity check: national number should be 7–12 digits (covers most countries)
+function isValidNationalNumber(digits: string) {
+  return /^\d{7,12}$/.test(digits);
+}
+
 export default function ContactClient() {
   const [form, setForm] = useState({
     name: "",
@@ -32,21 +50,45 @@ export default function ContactClient() {
     event_type: "",
     message: "",
   });
+  const [phoneCountry, setPhoneCountry] = useState(COUNTRY_CODES[0].dial);
+  const [whatsappCountry, setWhatsappCountry] = useState(COUNTRY_CODES[0].dial);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const phoneDigits = form.phone.replace(/\D/g, "");
+  const whatsappDigits = form.whatsapp.replace(/\D/g, "");
+
+  const emailValid = form.email.length === 0 || EMAIL_REGEX.test(form.email);
+  const phoneValid = form.phone.length === 0 || isValidNationalNumber(phoneDigits);
+  const whatsappValid = form.whatsapp.length === 0 || isValidNationalNumber(whatsappDigits);
+
+  const canSubmit =
+    !!form.name &&
+    !!form.phone &&
+    !!form.email &&
+    EMAIL_REGEX.test(form.email) &&
+    isValidNationalNumber(phoneDigits) &&
+    (form.whatsapp.length === 0 || isValidNationalNumber(whatsappDigits));
+
+  const markTouched = (key: string) => setTouched((s) => ({ ...s, [key]: true }));
+
   const submit = async () => {
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
+      const fullPhone = `${phoneCountry}${phoneDigits}`;
+      const fullWhatsapp = whatsappDigits ? `${whatsappCountry}${whatsappDigits}` : fullPhone;
+
       const res = await fetch(`${API_BASE}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          phone: form.phone,
-          whatsapp: form.whatsapp || form.phone,
+          phone: fullPhone,
+          whatsapp: fullWhatsapp,
           email: form.email,
           planner_answers: { event_type: form.event_type, special_requests: form.message },
           event_summary: { event_type: form.event_type },
@@ -60,8 +102,6 @@ export default function ContactClient() {
       setSubmitting(false);
     }
   };
-
-  const canSubmit = form.name && form.phone && form.email;
 
   return (
     <>
@@ -78,13 +118,13 @@ export default function ContactClient() {
             transition={{ duration: 0.7 }}
             className="mt-4 h-display text-5xl sm:text-6xl lg:text-7xl text-ink max-w-3xl"
           >
-            Let's start a
+            {`Let's start a`}
             <br />
             <span className="italic text-burnt">quiet conversation.</span>
           </motion.h1>
           <p className="mt-6 max-w-xl text-muted leading-relaxed">
-            The best events begin with a call. Reach us any way you like, or fill in
-            the form and we'll respond within 12 hours.
+           {` The best events begin with a call. Reach us any way you like, or fill in
+            the form and we'll respond within 12 hours.`}
           </p>
         </div>
       </section>
@@ -94,31 +134,30 @@ export default function ContactClient() {
           {/* Left: contact cards */}
           <div className="lg:col-span-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {CONTACT_CARDS.map((c) => {
+             {CONTACT_CARDS.map((c) => {
                 const Icon = c.icon;
                 return (
-                  <a
-                    key={c.label}
-                    href={c.href}
-                    target={c.href.startsWith("http") ? "_blank" : undefined}
-                    rel="noopener noreferrer"
-                    data-testid={`contact-card-${c.testId}`}
-                    className="lux-card p-6 group flex items-start gap-4"
-                  >
-                    <div className="w-11 h-11 rounded-full bg-cream-warm border border-line flex items-center justify-center text-burnt group-hover:bg-ink group-hover:text-cream transition">
-                      <Icon size={18} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-[10px] tracking-[0.24em] uppercase text-muted">
-                        {c.label}
+                 <a key={c.label}
+                      href={c.href}
+                      target={c.href.startsWith("http") ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      data-testid={`contact-card-${c.testId}`}
+                      className="lux-card p-6 group flex items-start gap-4"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-cream-warm border border-line flex items-center justify-center text-burnt group-hover:bg-ink group-hover:text-cream transition shrink-0">
+                        <Icon size={18} />
                       </div>
-                      <div className="mt-1 text-ink font-medium">{c.value}</div>
-                    </div>
-                    <ArrowUpRight
-                      size={16}
-                      className="text-ink opacity-30 group-hover:opacity-100 transition"
-                    />
-                  </a>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] tracking-[0.24em] uppercase text-muted">
+                          {c.label}
+                        </div>
+                        <div className="mt-1 text-ink font-medium truncate">{c.value}</div>
+                      </div>
+                      <ArrowUpRight
+                        size={16}
+                        className="text-ink opacity-30 group-hover:opacity-100 transition shrink-0"
+                      />
+                    </a>
                 );
               })}
             </div>
@@ -138,7 +177,7 @@ export default function ContactClient() {
 
             <div className="mt-6 lux-card p-6 bg-ink text-cream">
               <div className="text-[10px] tracking-[0.24em] uppercase text-gold">Hours</div>
-              <div className="mt-3 text-cream/90 leading-relaxed text-sm">
+              <div className="mt-3 text-ink leading-relaxed  text-sm">
                 Mon – Sat · 10:00 AM to 8:00 PM IST
                 <br />
                 Sunday consultations by appointment.
@@ -160,7 +199,7 @@ export default function ContactClient() {
                 <span className="eyebrow">Request a callback</span>
               </div>
               <h2 className="mt-4 h-display text-3xl sm:text-4xl text-ink">
-                Tell us a little, and we'll call.
+                {`Tell us a little, and we'll call.`}
               </h2>
 
               {sent ? (
@@ -179,29 +218,151 @@ export default function ContactClient() {
               ) : (
                 <>
                   <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { key: "name", label: "Full name", type: "text" },
-                      { key: "event_type", label: "Event type", type: "text" },
-                      { key: "phone", label: "Phone", type: "tel" },
-                      { key: "whatsapp", label: "WhatsApp (optional)", type: "tel" },
-                      { key: "email", label: "Email", type: "email", full: true },
-                    ].map((f) => (
-                      <label
-                        key={f.key}
-                        className={`block ${(f as { full?: boolean }).full ? "sm:col-span-2" : ""}`}
+                    <label className="block">
+                      <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                        Full name
+                      </span>
+                      <input
+                        type="text"
+                        data-testid="contact-input-name"
+                        value={form.name}
+                        onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                        className="mt-2 w-full px-4 py-3 rounded-2xl border border-line-strong bg-white text-ink focus:border-burnt outline-none"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                        Event type
+                      </span>
+                      <input
+                        type="text"
+                        data-testid="contact-input-event_type"
+                        value={form.event_type}
+                        onChange={(e) => setForm((s) => ({ ...s, event_type: e.target.value }))}
+                        className="mt-2 w-full px-4 py-3 rounded-2xl border border-line-strong bg-white text-ink focus:border-burnt outline-none"
+                      />
+                    </label>
+
+                    {/* Phone with country code */}
+                    <label className="block">
+                      <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                        Phone
+                      </span>
+                      <div className="mt-2 flex gap-2">
+                        <div className="relative shrink-0">
+                      <select
+                        value={phoneCountry}
+                        onChange={(e) => setPhoneCountry(e.target.value)}
+                        data-testid="lead-input-phone-country"
+                        className="appearance-none pl-3 pr-8 py-3 rounded-2xl border border-line-strong bg-card text-ink outline-none focus:border-burnt w-full"
                       >
-                        <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
-                          {f.label}
-                        </span>
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.code} value={c.dial}>
+                            {c.dial}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={14}
+                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+                      />
+                    </div>
                         <input
-                          type={f.type}
-                          data-testid={`contact-input-${f.key}`}
-                          value={(form as Record<string, string>)[f.key]}
-                          onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
-                          className="mt-2 w-full px-4 py-3 rounded-2xl border border-line-strong bg-white text-ink focus:border-burnt outline-none"
+                          type="tel"
+                          inputMode="numeric"
+                          data-testid="contact-input-phone"
+                          value={form.phone}
+                          onChange={(e) =>
+                            setForm((s) => ({ ...s, phone: e.target.value.replace(/[^\d\s-]/g, "") }))
+                          }
+                          onBlur={() => markTouched("phone")}
+                          placeholder="98765 43210"
+                          className={`mt-0 w-full px-4 py-3 rounded-2xl border bg-white text-ink outline-none ${
+                            touched.phone && !phoneValid
+                              ? "border-burnt-deep focus:border-burnt-deep"
+                              : "border-line-strong focus:border-burnt"
+                          }`}
                         />
-                      </label>
-                    ))}
+                      </div>
+                      {touched.phone && !phoneValid && (
+                        <span className="mt-1 block text-xs text-burnt-deep">
+                          Enter a valid phone number (7–12 digits).
+                        </span>
+                      )}
+                    </label>
+
+                    {/* WhatsApp with country code */}
+                    <label className="block">
+                      <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                        WhatsApp (optional)
+                      </span>
+                      <div className="mt-2 flex gap-2">
+                      <div className="relative shrink-0">
+                          <select
+                            value={whatsappCountry}
+                            onChange={(e) => setWhatsappCountry(e.target.value)}
+                            data-testid="lead-input-whatsapp-country"
+                            className="appearance-none pl-3 pr-8 py-3 rounded-2xl border border-line-strong bg-card text-ink outline-none focus:border-burnt w-full"
+                          >
+                            {COUNTRY_CODES.map((c) => (
+                              <option key={c.code} value={c.dial}>
+                                {c.dial}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={14}
+                            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+                          />
+                        </div>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          data-testid="contact-input-whatsapp"
+                          value={form.whatsapp}
+                          onChange={(e) =>
+                            setForm((s) => ({ ...s, whatsapp: e.target.value.replace(/[^\d\s-]/g, "") }))
+                          }
+                          onBlur={() => markTouched("whatsapp")}
+                          placeholder="Same as phone if left blank"
+                          className={`mt-0 w-full px-4 py-3 rounded-2xl border bg-white text-ink outline-none ${
+                            touched.whatsapp && !whatsappValid
+                              ? "border-burnt-deep focus:border-burnt-deep"
+                              : "border-line-strong focus:border-burnt"
+                          }`}
+                        />
+                      </div>
+                      {touched.whatsapp && !whatsappValid && (
+                        <span className="mt-1 block text-xs text-burnt-deep">
+                          Enter a valid WhatsApp number (7–12 digits).
+                        </span>
+                      )}
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                        Email
+                      </span>
+                      <input
+                        type="email"
+                        data-testid="contact-input-email"
+                        value={form.email}
+                        onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                        onBlur={() => markTouched("email")}
+                        className={`mt-2 w-full px-4 py-3 rounded-2xl border bg-white text-ink outline-none ${
+                          touched.email && !emailValid
+                            ? "border-burnt-deep focus:border-burnt-deep"
+                            : "border-line-strong focus:border-burnt"
+                        }`}
+                      />
+                      {touched.email && !emailValid && (
+                        <span className="mt-1 block text-xs text-burnt-deep">
+                          Enter a valid email address.
+                        </span>
+                      )}
+                    </label>
+
                     <label className="block sm:col-span-2">
                       <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
                         A little about your event

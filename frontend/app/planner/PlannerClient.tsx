@@ -14,10 +14,28 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { activeSteps, PlannerAnswers } from "./steps";
+import { ChevronDown } from "lucide-react";
 import AISuggestButton from "./AISuggestButton";
 import { API_BASE } from "../lib/constants";
 
 type Stage = "steps" | "summary" | "contact" | "sent";
+
+// Common country dial codes — extend as needed
+const COUNTRY_CODES = [
+  { code: "IN", dial: "+91", label: "India (+91)" },
+  { code: "US", dial: "+1", label: "USA/Canada (+1)" },
+  { code: "GB", dial: "+44", label: "UK (+44)" },
+  { code: "AE", dial: "+971", label: "UAE (+971)" },
+  { code: "AU", dial: "+61", label: "Australia (+61)" },
+  { code: "SG", dial: "+65", label: "Singapore (+65)" },
+];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Basic sanity check: national number should be 7–12 digits (covers most countries)
+function isValidNationalNumber(digits: string) {
+  return /^\d{7,12}$/.test(digits);
+}
 
 export default function PlannerClient() {
   const router = useRouter();
@@ -211,20 +229,44 @@ export default function PlannerClient() {
 
   // ---------- Submit lead ----------
   const [lead, setLead] = useState({ name: "", phone: "", whatsapp: "", email: "" });
+  const [phoneCountry, setPhoneCountry] = useState(COUNTRY_CODES[0].dial);
+  const [whatsappCountry, setWhatsappCountry] = useState(COUNTRY_CODES[0].dial);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const phoneDigits = lead.phone.replace(/\D/g, "");
+  const whatsappDigits = lead.whatsapp.replace(/\D/g, "");
+
+  const emailValid = lead.email.length === 0 || EMAIL_REGEX.test(lead.email);
+  const phoneValid = lead.phone.length === 0 || isValidNationalNumber(phoneDigits);
+  const whatsappValid = lead.whatsapp.length === 0 || isValidNationalNumber(whatsappDigits);
+
+  const canSubmitLead =
+    !!lead.name &&
+    !!lead.phone &&
+    !!lead.email &&
+    EMAIL_REGEX.test(lead.email) &&
+    isValidNationalNumber(phoneDigits) &&
+    (lead.whatsapp.length === 0 || isValidNationalNumber(whatsappDigits));
+
+  const markTouched = (key: string) => setTouched((s) => ({ ...s, [key]: true }));
+
   const submitLead = async () => {
+    if (!canSubmitLead) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const fullPhone = `${phoneCountry}${phoneDigits}`;
+      const fullWhatsapp = whatsappDigits ? `${whatsappCountry}${whatsappDigits}` : fullPhone;
+
       const res = await fetch(`${API_BASE}/api/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: lead.name,
-          phone: lead.phone,
-          whatsapp: lead.whatsapp || lead.phone,
+          phone: fullPhone,
+          whatsapp: fullWhatsapp,
           email: lead.email,
           planner_answers: answers,
           event_summary: {
@@ -389,9 +431,7 @@ export default function PlannerClient() {
                         {row.eyebrow}
                       </div>
                       <div className="flex-1">
-                       (
-                          <div className="text-ink">{row.value}</div>
-                        )
+                           <div className="text-ink">{row.value}</div>
                       </div>
                       <button
                         onClick={() => {
@@ -456,28 +496,139 @@ export default function PlannerClient() {
               </p>
 
               <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                {[
-                  { key: "name", label: "Full name", type: "text", placeholder: "Your name" },
-                  { key: "phone", label: "Phone", type: "tel", placeholder: "+91 …" },
-                  { key: "whatsapp", label: "WhatsApp (if different)", type: "tel", placeholder: "+91 …" },
-                  { key: "email", label: "Email", type: "email", placeholder: "you@example.com" },
-                ].map((f) => (
-                  <label key={f.key} className="block">
-                    <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
-                      {f.label}
-                    </span>
+                <label className="block">
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                    Full name
+                  </span>
+                  <input
+                    type="text"
+                    data-testid="lead-input-name"
+                    value={lead.name}
+                    onChange={(e) => setLead((l) => ({ ...l, name: e.target.value }))}
+                    placeholder="Your name"
+                    className="mt-2 w-full px-4 py-3 rounded-2xl border border-line-strong bg-card text-ink focus:border-burnt outline-none"
+                  />
+                </label>
+
+                {/* Phone with country code */}
+                <label className="block">
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                    Phone
+                  </span>
+                  <div className="mt-2 flex gap-2">
+                   <div className="relative shrink-0">
+                      <select
+                        value={phoneCountry}
+                        onChange={(e) => setPhoneCountry(e.target.value)}
+                        data-testid="lead-input-phone-country"
+                        className="appearance-none pl-3 pr-8 py-3 rounded-2xl border border-line-strong bg-card text-ink outline-none focus:border-burnt w-full"
+                      >
+                        {COUNTRY_CODES.map((c) => (
+                          <option key={c.code} value={c.dial}>
+                            {c.dial}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={14}
+                        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+                      />
+                    </div>
                     <input
-                      type={f.type}
-                      data-testid={`lead-input-${f.key}`}
-                      value={(lead as Record<string, string>)[f.key]}
+                      type="tel"
+                      inputMode="numeric"
+                      data-testid="lead-input-phone"
+                      value={lead.phone}
                       onChange={(e) =>
-                        setLead((l) => ({ ...l, [f.key]: e.target.value }))
+                        setLead((l) => ({ ...l, phone: e.target.value.replace(/[^\d\s-]/g, "") }))
                       }
-                      placeholder={f.placeholder}
-                      className="mt-2 w-full px-4 py-3 rounded-2xl border border-line-strong bg-card text-ink focus:border-burnt outline-none"
+                      onBlur={() => markTouched("phone")}
+                      placeholder="98765 43210"
+                      className={`mt-0 w-full px-4 py-3 rounded-2xl border bg-card text-ink outline-none ${
+                        touched.phone && !phoneValid
+                          ? "border-burnt-deep focus:border-burnt-deep"
+                          : "border-line-strong focus:border-burnt"
+                      }`}
                     />
-                  </label>
-                ))}
+                  </div>
+                  {touched.phone && !phoneValid && (
+                    <span className="mt-1 block text-xs text-burnt-deep">
+                      Enter a valid phone number (7–12 digits).
+                    </span>
+                  )}
+                </label>
+
+                {/* WhatsApp with country code */}
+                <label className="block">
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                    WhatsApp (if different)
+                  </span>
+                  <div className="mt-2 flex gap-2">
+                   <div className="relative shrink-0">
+                    <select
+                      value={whatsappCountry}
+                      onChange={(e) => setWhatsappCountry(e.target.value)}
+                      data-testid="lead-input-whatsapp-country"
+                      className="appearance-none pl-3 pr-8 py-3 rounded-2xl border border-line-strong bg-card text-ink outline-none focus:border-burnt w-full"
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.dial}>
+                          {c.dial}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+                    />
+</div>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      data-testid="lead-input-whatsapp"
+                      value={lead.whatsapp}
+                      onChange={(e) =>
+                        setLead((l) => ({ ...l, whatsapp: e.target.value.replace(/[^\d\s-]/g, "") }))
+                      }
+                      onBlur={() => markTouched("whatsapp")}
+                      placeholder="Same as phone if left blank"
+                      className={`mt-0 w-full px-4 py-3 rounded-2xl border bg-card text-ink outline-none ${
+                        touched.whatsapp && !whatsappValid
+                          ? "border-burnt-deep focus:border-burnt-deep"
+                          : "border-line-strong focus:border-burnt"
+                      }`}
+                    />
+                  </div>
+                  {touched.whatsapp && !whatsappValid && (
+                    <span className="mt-1 block text-xs text-burnt-deep">
+                      Enter a valid WhatsApp number (7–12 digits).
+                    </span>
+                  )}
+                </label>
+
+                <label className="block sm:col-span-2">
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-muted">
+                    Email
+                  </span>
+                  <input
+                    type="email"
+                    data-testid="lead-input-email"
+                    value={lead.email}
+                    onChange={(e) => setLead((l) => ({ ...l, email: e.target.value }))}
+                    onBlur={() => markTouched("email")}
+                    placeholder="you@example.com"
+                    className={`mt-2 w-full px-4 py-3 rounded-2xl border bg-card text-ink outline-none ${
+                      touched.email && !emailValid
+                        ? "border-burnt-deep focus:border-burnt-deep"
+                        : "border-line-strong focus:border-burnt"
+                    }`}
+                  />
+                  {touched.email && !emailValid && (
+                    <span className="mt-1 block text-xs text-burnt-deep">
+                      Enter a valid email address.
+                    </span>
+                  )}
+                </label>
               </div>
 
               {submitError && (
@@ -496,7 +647,7 @@ export default function PlannerClient() {
                 </button>
                 <button
                   onClick={submitLead}
-                  disabled={!lead.name || !lead.phone || !lead.email || submitting}
+                  disabled={!canSubmitLead || submitting}
                   className="btn-primary disabled:opacity-40"
                   data-testid="submit-lead"
                 >
