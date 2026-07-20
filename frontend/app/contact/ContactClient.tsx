@@ -26,13 +26,14 @@ const CONTACT_CARDS = [
 
 // Common country dial codes — extend as needed
 const COUNTRY_CODES = [
-  { code: "IN", dial: "+91", label: "India (+91)" },
-  { code: "US", dial: "+1", label: "USA/Canada (+1)" },
-  { code: "GB", dial: "+44", label: "UK (+44)" },
-  { code: "AE", dial: "+971", label: "UAE (+971)" },
-  { code: "AU", dial: "+61", label: "Australia (+61)" },
-  { code: "SG", dial: "+65", label: "Singapore (+65)" },
+  { code: "IN", dial: "+91", label: "🇮🇳 (+91)" },
+  { code: "US", dial: "+1", label: "🇺🇸 (+1)" },
+  { code: "GB", dial: "+44", label: "🇬🇧 (+44)" },
+  { code: "AE", dial: "+971", label: "🇦🇪 (+971)" },
+  { code: "AU", dial: "+61", label: "🇦🇺 (+61)" },
+  { code: "SG", dial: "+65", label: "🇸🇬 (+65)" },
 ];
+
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -259,7 +260,7 @@ export default function ContactClient() {
                       >
                         {COUNTRY_CODES.map((c) => (
                           <option key={c.code} value={c.dial}>
-                            {c.dial}
+                            {c.label}
                           </option>
                         ))}
                       </select>
@@ -307,7 +308,7 @@ export default function ContactClient() {
                           >
                             {COUNTRY_CODES.map((c) => (
                               <option key={c.code} value={c.dial}>
-                                {c.dial}
+                              {c.label}
                               </option>
                             ))}
                           </select>

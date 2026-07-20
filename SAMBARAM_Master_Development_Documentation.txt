@@ -1,0 +1,163 @@
+SAMBARAM MASTER DEVELOPMENT ROADMAP (MVP)
+
+================================================== 1. PRODUCT VISION
+==================================================
+
+SAMBARAM is a premium event lead marketplace.
+
+Our responsibility: - Generate premium event enquiries. - Verify every
+serious enquiry. - Connect customers with trusted vendors.
+
+Our responsibility ends after introducing a verified customer to the
+selected vendor. We are NOT an event management company.
+
+Core principle: TRUST BEFORE SCALE.
+
+================================================== 2. CUSTOMER FLOW
+==================================================
+
+Customer sees Meta Ad / Instagram Reel ↓ Visits website ↓ Uses AI Event
+Planner ↓ Submits enquiry ↓ Lead stored in database ↓ CRM receives
+notification ↓ Team calls customer ↓ Verify: - Event date - Budget -
+Location - Requirements - Timeline - Whether enquiry is genuine ↓ Update
+notes and corrected budget ↓ Mark VERIFIED ↓ Publish to Vendor
+Marketplace
+
+Optional: - Ask for Instagram / LinkedIn only if customer is
+comfortable. - Never make social proof mandatory. - Phone conversation
+remains primary verification.
+
+================================================== 3. CRM
+==================================================
+
+Lead List Lead Details Internal Notes Customer Information AI Summary
+Planning Preferences Notification Status
+
+Statuses: New Contacted Verified Published Closed
+
+Future: Dashboard Search Filters Vendor assignment history
+
+================================================== 4. VENDOR PLATFORM
+==================================================
+
+Vendor Types:
+
+1.  Full Event Managers
+2.  Photographers
+
+Store: Business Portfolio Cities Experience Past Events Contact
+Availability
+
+Vendor Levels:
+
+Bronze Silver Gold Elite
+
+Only trusted vendors should receive premium events.
+
+================================================== 5. VENDOR
+VERIFICATION ==================================================
+
+Collect: - Identity/business documents where appropriate - Portfolio -
+Social presence - References if available - Manual interview
+
+After onboarding: Approve or Reject.
+
+================================================== 6. VERIFIED LEAD
+MARKETPLACE ==================================================
+
+Only VERIFIED enquiries appear.
+
+Vendor initially sees:
+
+-   Budget
+-   Date
+-   City
+-   Event Type
+-   AI Summary
+-   Internal verification notes
+
+Customer phone/email hidden.
+
+Vendor clicks: Acquire Lead
+
+First acquired lead for every new vendor: FREE
+
+This helps build trust.
+
+================================================== 7. SECURITY
+==================================================
+
+Implement: - Rate limiting - CAPTCHA when suspicious - OTP
+verification - Spam protection - Abuse monitoring
+
+Do not permanently block normal users sharing one IP.
+
+================================================== 8. NOTIFICATIONS
+==================================================
+
+Customer: Submission Updates
+
+Vendor: New lead Lead acquired
+
+Internal: Telegram CRM alerts
+
+================================================== 9. LAUNCH PLAN
+==================================================
+
+Finish platform Deploy Onboard vendors Run Meta ads Verify leads Publish
+verified leads Collect first vendor feedback Then finalize pricing.
+
+================================================== 10. BUSINESS IDEAS
+DISCUSSED ==================================================
+
+-   Human verification before publishing.
+-   Vendor trust is more important than customer trust.
+-   First acquired lead free.
+-   Vendor capability levels.
+-   Notes visible to vendors.
+-   Marketplace should focus on premium events.
+-   Photographers may become a separate low-touch marketplace in the
+    future.
+-   Pricing should be validated with real vendors before locking it.
+
+================================================== 11. FUTURE
+RECOMMENDATIONS ==================================================
+
+Prepare a complete company handbook covering:
+
+-   Vision & Mission
+-   Business Model
+-   SOP for customer verification
+-   SOP for vendor onboarding
+-   SOP for customer calls
+-   CRM architecture
+-   Database schema
+-   API documentation
+-   AI planner documentation
+-   UI/UX documentation
+-   Security architecture
+-   Deployment guide
+-   Marketing strategy
+-   Meta Ads strategy
+-   Vendor acquisition strategy
+-   Operations manual
+-   Analytics
+-   Long-term roadmap (V2/V3)
+
+================================================== 12. IMMEDIATE NEXT
+DEVELOPMENT ==================================================
+
+1.  Finish CRM.
+2.  Build Vendor Database.
+3.  Vendor Dashboard.
+4.  Vendor Approval.
+5.  Lead Marketplace.
+6.  Acquire Lead workflow.
+7.  Notifications.
+8.  Security.
+9.  Deploy.
+10. Run Meta Ads.
+11. Onboard first vendors.
+12. Validate pricing using real market feedback.
+
+The product should be launched as soon as these are complete.
