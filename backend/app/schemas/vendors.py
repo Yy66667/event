@@ -46,12 +46,18 @@ class VendorApplication(BaseModel):
     min_event_budget: str
     max_guest_count: int
     minimum_notice_days: int
-    availability: str
-    premium_experience: str
+    availability: str | None = None
+    premium_experience: str | None = None 
+    max_guest_count: int | None = None
+    minimum_notice_days: int | None = None
     portfolio_highlights: str
     client_references: str
     business_description: str
     differentiator: str
     consent: bool
+    # Category-specific matching signals, keyed by capability group (for example
+    # venue_expertise, equipment, cuisine_support). Kept alongside the legacy
+    # fields while the matching engine is expanded to additional partner types.
+    capabilities: dict[str, list[str]] = Field(default_factory=dict)
     status: str = "new"
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
