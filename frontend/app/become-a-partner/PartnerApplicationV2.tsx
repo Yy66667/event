@@ -16,6 +16,7 @@ import {
   MapPin,
   Plus,
   Search,
+  TriangleAlert,
   X,
 } from "lucide-react";
 
@@ -305,9 +306,14 @@ function Choices({
 }) {
   return (
     <fieldset>
-      <legend className="text-[10px] font-semibold tracking-[.18em] uppercase text-muted">
-        {label}
-      </legend>
+      <div className="flex items-baseline justify-between gap-3">
+        <legend className="text-[10px] font-semibold tracking-[.18em] uppercase text-muted">
+          {label}
+        </legend>
+        {value.length > 0 && (
+          <span className="text-[10px] font-semibold text-burnt">{value.length} selected</span>
+        )}
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => (
           <button
@@ -338,13 +344,34 @@ function CityPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const options = cities.filter(
     (c) => !value.includes(c) && c.toLowerCase().includes(query.toLowerCase())
   );
 
+  // Close the dropdown on outside click, so it doesn't stay open indefinitely.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const addCustom = () => {
+    const trimmed = query.trim();
+    if (!trimmed || value.includes(trimmed)) return;
+    onChange([...value, trimmed]);
+    setQuery("");
+  };
+
   return (
-    <div>
+    <div ref={wrapRef}>
       <span className="text-[10px] font-semibold tracking-[.18em] uppercase text-muted">
         Cities served
       </span>
@@ -379,8 +406,14 @@ function CityPicker({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-            placeholder="Search Indian cities"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+              if (e.key === "Enter" && !options.length) {
+                e.preventDefault();
+                addCustom();
+              }
+            }}
+            placeholder="Search or type a city"
             className={`${input} mt-0 pl-10`}
           />
           <div
@@ -392,7 +425,6 @@ function CityPicker({
                 <button
                   key={city}
                   role="option"
-                  aria-selected={false}
                   type="button"
                   className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-cream"
                   onClick={() => {
@@ -403,8 +435,16 @@ function CityPicker({
                   {city}
                 </button>
               ))
+            ) : query.trim() ? (
+              <button
+                type="button"
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-burnt hover:bg-cream"
+                onClick={addCustom}
+              >
+                Add &ldquo;{query.trim()}&rdquo; as a served city
+              </button>
             ) : (
-              <p className="px-3 py-2 text-sm text-muted">No available city found.</p>
+              <p className="px-3 py-2 text-sm text-muted">Start typing to search cities.</p>
             )}
           </div>
         </div>
@@ -417,6 +457,8 @@ function CityPicker({
 // Main component
 // ---------------------------------------------------------------------------
 
+const STEP_LABELS = ["Business", "Capabilities", "Profile"];
+
 export default function PartnerApplicationV2() {
   const [form, setForm] = useState<Values>(blank);
   const [step, setStep] = useState(0);
@@ -425,6 +467,7 @@ export default function PartnerApplicationV2() {
   const [sent, setSent] = useState(false);
   const [faq, setFaq] = useState<number | null>(null);
   const formRef = useRef<HTMLElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     window.history.scrollRestoration = "manual";
@@ -434,12 +477,20 @@ export default function PartnerApplicationV2() {
     };
   }, []);
 
+  // Bring the error message into view whenever it appears, so it's never
+  // silently sitting off-screen after a step change or a failed submit.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
+
   const set = <K extends keyof Values>(key: K, value: Values[K]) =>
     setForm((old) => ({ ...old, [key]: value }));
 
   const fields = capabilities[form.partner_type]?.fields ?? [];
   const instaError = form.instagram && !insta.test(form.instagram.trim());
   const phoneError = form.phone && !validPhone(form.phone);
+  const step0Valid = businessDetailsSchema.safeParse(form).success;
+  const completedFieldCount = fields.filter((f) => form.capabilities[f.key]?.length).length;
 
   const toggle = (key: CapabilityKey, option: string) =>
     setForm((old) => {
@@ -570,6 +621,27 @@ export default function PartnerApplicationV2() {
             Thank you for applying. Our team will personally review your profile and contact you
             if it aligns with the Sambaram network.
           </p>
+
+          <div className="mt-9 rounded-2xl border border-line bg-card p-6 text-left">
+            <p className="text-[10px] font-semibold tracking-[.18em] uppercase text-muted">
+              What happens next
+            </p>
+            <ol className="mt-4 space-y-3 text-sm text-ink">
+              <li className="flex gap-3">
+                <span className="font-serif text-burnt">01</span>
+                Our team reviews your business details and portfolio.
+              </li>
+              <li className="flex gap-3">
+                <span className="font-serif text-burnt">02</span>
+                We reach out on WhatsApp or email if your profile fits the network.
+              </li>
+              <li className="flex gap-3">
+                <span className="font-serif text-burnt">03</span>
+                Approved partners get dashboard access to manage enquiries.
+              </li>
+            </ol>
+          </div>
+
           <Link href="/" className="btn-primary mt-8">
             Back to home
           </Link>
@@ -871,7 +943,7 @@ export default function PartnerApplicationV2() {
 
           {/* Step tabs */}
           <div className="grid grid-cols-3 border-b border-line">
-            {["Business", "Capabilities", "Profile"].map((item, index) => (
+            {STEP_LABELS.map((item, index) => (
               <button
                 key={item}
                 type="button"
@@ -885,6 +957,14 @@ export default function PartnerApplicationV2() {
                 <span className="hidden sm:inline"> · {item}</span>
               </button>
             ))}
+          </div>
+
+          {/* Progress bar — gives a sense of overall completion beyond just the active tab */}
+          <div className="h-1 w-full bg-line">
+            <div
+              className="h-1 bg-burnt transition-all duration-300"
+              style={{ width: `${((step + 1) / STEP_LABELS.length) * 100}%` }}
+            />
           </div>
 
           <div className="p-6 sm:p-10">
@@ -1068,9 +1148,16 @@ export default function PartnerApplicationV2() {
             {step === 1 && (
               <div className="space-y-9">
                 <div>
-                  <h3 className="font-serif text-3xl text-ink">
-                    {capabilities[form.partner_type]?.title ?? "Choose a category first"}
-                  </h3>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-serif text-3xl text-ink">
+                      {capabilities[form.partner_type]?.title ?? "Choose a category first"}
+                    </h3>
+                    {fields.length > 0 && (
+                      <p className="text-sm font-medium text-muted">
+                        {completedFieldCount} of {fields.length} sections completed
+                      </p>
+                    )}
+                  </div>
                   <p className="mt-2 text-muted">
                     Select every capability you confidently offer. These map directly to customer
                     planning needs.
@@ -1110,24 +1197,34 @@ export default function PartnerApplicationV2() {
                   </Field>
 
                   <Field label="Maximum guest count" hint="Optional">
-                    <input
-                      min="1"
-                      type="number"
-                      value={form.max_guest_count}
-                      onChange={(e) => set("max_guest_count", e.target.value)}
-                      className={input}
-                    />
+                    <div className="relative">
+                      <input
+                        min="1"
+                        type="number"
+                        value={form.max_guest_count}
+                        onChange={(e) => set("max_guest_count", e.target.value)}
+                        className={`${input} pr-16`}
+                      />
+                      <span className="pointer-events-none absolute right-4 top-5 text-xs text-muted">
+                        guests
+                      </span>
+                    </div>
                   </Field>
                 </div>
 
                 <Field label="Minimum notice (days)" hint="Optional">
-                  <input
-                    min="0"
-                    type="number"
-                    value={form.minimum_notice_days}
-                    onChange={(e) => set("minimum_notice_days", e.target.value)}
-                    className={input}
-                  />
+                  <div className="relative">
+                    <input
+                      min="0"
+                      type="number"
+                      value={form.minimum_notice_days}
+                      onChange={(e) => set("minimum_notice_days", e.target.value)}
+                      className={`${input} pr-14`}
+                    />
+                    <span className="pointer-events-none absolute right-4 top-5 text-xs text-muted">
+                      days
+                    </span>
+                  </div>
                 </Field>
 
                 <Field label="Premium event experience" hint="Optional">
@@ -1204,8 +1301,12 @@ export default function PartnerApplicationV2() {
             )}
 
             {error && (
-              <p role="alert" className="mt-5 text-sm text-burnt">
-                {error}
+              <p
+                ref={errorRef}
+                role="alert"
+                className="mt-5 flex items-center gap-2 rounded-xl bg-burnt/10 px-4 py-3 text-sm text-burnt"
+              >
+                <TriangleAlert size={15} className="shrink-0" /> {error}
               </p>
             )}
 
@@ -1214,11 +1315,12 @@ export default function PartnerApplicationV2() {
               {step ? (
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={() => {
                     setError("");
                     setStep(step - 1);
                   }}
-                  className="btn-ghost"
+                  className="btn-ghost disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   <ArrowLeft className="mr-2" size={15} />
                   Back
@@ -1230,9 +1332,7 @@ export default function PartnerApplicationV2() {
               {step < 2 ? (
                 <button
                   type="button"
-                  disabled={Boolean(
-                    step === 0 && (!validPhone(form.phone) || !validPhone(form.whatsapp) || instaError)
-                  )}
+                  disabled={step === 0 && !step0Valid}
                   onClick={() => validate() && setStep(step + 1)}
                   className="btn-primary disabled:cursor-not-allowed disabled:opacity-45"
                 >

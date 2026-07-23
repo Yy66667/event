@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -23,6 +24,17 @@ class Vendor(BaseModel):
 class VendorLoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class VendorCreateAccountRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class VendorLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    vendor: dict[str, Any]
 
 
 class VendorApplication(BaseModel):

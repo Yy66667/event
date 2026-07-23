@@ -17,6 +17,7 @@ def test_expected_api_routes_are_registered():
         "/api/leads/{lead_id}",
         "/api/vendors",
         "/api/vendor-applications",
+        "/api/vendor/create-account",
         "/api/vendor/login",
         "/api/vendor/leads",
         "/api/vendor/leads/{lead_id}",

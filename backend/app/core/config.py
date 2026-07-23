@@ -22,6 +22,9 @@ class Settings:
     twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
     twilio_whatsapp_from = os.getenv("TWILIO_WHATSAPP_FROM", "")
     resend_api_key = os.getenv("RESEND_API_KEY", "")
+    jwt_secret_key = os.getenv("JWT_SECRET_KEY")
+    jwt_algorithm = "HS256"
+    jwt_expire_minutes = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
     cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
 
 
