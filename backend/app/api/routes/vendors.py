@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.core.database import db
-from app.schemas.vendors import Vendor, VendorApplication, VendorLoginRequest
+from app.schemas.vendors import Vendor, VendorApplication, VendorLoginRequest, AddNoteRequest
 from app.services.compatibility import calculate_compatibility
 from app.services.notifications import notify_vendor_application
 
@@ -31,6 +31,7 @@ async def create_vendor_application(application: VendorApplication) -> dict[str,
     }
     await db["vendor_applications"].insert_one(application_data)
     return {"message": "Application received", "application_id": application.id}
+
 
 
 @router.post("/api/vendor/login")
@@ -73,3 +74,39 @@ async def get_compatible_marketplace_leads(vendor_id: str) -> list[dict[str, Any
         raise HTTPException(status_code=404, detail="Vendor not found")
     leads = await db["leads"].find({"status": "verified"}).to_list(100)
     return [{**_marketplace_lead(lead), "compatibility": calculate_compatibility(vendor, lead)} for lead in leads]
+
+
+@router.get("/api/vendor-applications")
+async def get_vendor_applications() -> list[dict[str, Any]]:
+    applications = await db["vendor_applications"].find().sort("created_at", -1).to_list(100)
+
+    for application in applications:
+        application.pop("_id", None)
+
+    return applications
+
+@router.get("/api/vendor-applications/{application_id}")
+async def get_vendor_application(application_id: str):
+    application = await db["vendor_applications"].find_one(
+        {"id": application_id}
+    )
+
+    if application is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    application.pop("_id", None)
+
+    return application
+
+
+@router.post("/api/vendor-applications/{application_id}/notes")
+async def add_note(application_id: str, payload: AddNoteRequest) -> dict[str, Any]:
+    from datetime import datetime, timezone
+    note = {"created_at": datetime.now(timezone.utc).isoformat(), "author": payload.author, "note": payload.note}
+    result = await db["vendor_applications"].update_one({"id": application_id}, {"$push": {"internal_notes": note}})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Application not found")
+    return {"status": "success", "note": note}

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { z } from "zod";
 import {
   ArrowDown,
   ArrowLeft,
@@ -50,6 +51,10 @@ type Values = {
   years_in_business: string;
   events_per_year: string;
   team_size: string;
+  availability: string;
+  premium_experience: string;
+  max_guest_count: string;
+  minimum_notice_days: string;
   service_cities: string[];
   portfolio_url: string;
   portfolio_highlights: string;
@@ -227,6 +232,10 @@ const blank: Values = {
   years_in_business: "",
   events_per_year: "",
   team_size: "",
+  availability: "",
+  premium_experience: "",
+  max_guest_count: "",
+  minimum_notice_days: "",
   service_cities: [],
   portfolio_url: "",
   portfolio_highlights: "",
@@ -244,6 +253,20 @@ const insta =
   /^(?:[a-zA-Z0-9._]{1,30}|(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9._]{1,30}\/?(?:\?.*)?)$/;
 
 const validPhone = (value: string) => /^\d{10}$/.test(value);
+
+const businessDetailsSchema = z.object({
+  partner_type: z.enum(["event_partner", "photography_studio"]),
+  business_name: z.string().trim().min(2, "Enter your business name."),
+  owner_name: z.string().trim().min(2, "Enter the owner's name."),
+  email: z.string().trim().email("Enter a valid email address."),
+  phone: z.string().regex(/^\d{10}$/, "Enter exactly 10 digits for an Indian phone number."),
+  whatsapp: z.string().regex(/^\d{10}$/, "Enter exactly 10 digits for an Indian WhatsApp number."),
+  instagram: z.string().trim().regex(insta, "Enter an Instagram username or profile URL."),
+  city: z.string().min(1, "Select your primary city."),
+  years_in_business: z.string().min(1, "Enter years in business."),
+  events_per_year: z.string().min(1, "Enter events per year."),
+  team_size: z.string().min(1, "Enter your team size."),
+});
 
 // ---------------------------------------------------------------------------
 // Small presentational helpers
@@ -435,23 +458,11 @@ export default function PartnerApplicationV2() {
   const validate = () => {
     let message = "";
 
-    if (
-      step === 0 &&
-      !(
-        form.partner_type &&
-        form.business_name.trim() &&
-        form.owner_name.trim() &&
-        /^\S+@\S+\.\S+$/.test(form.email) &&
-        validPhone(form.phone) &&
-        validPhone(form.whatsapp) &&
-        insta.test(form.instagram.trim()) &&
-        form.city &&
-        form.years_in_business &&
-        form.events_per_year &&
-        form.team_size
-      )
-    ) {
-      message = "Please complete the required business details with valid phone and Instagram information.";
+    if (step === 0) {
+      const result = businessDetailsSchema.safeParse(form);
+      if (!result.success) {
+        message = result.error.issues[0]?.message ?? "Please complete your business details.";
+      }
     }
 
     if (
@@ -498,8 +509,10 @@ export default function PartnerApplicationV2() {
           services: form.capabilities.core_services ?? form.capabilities.photography_services ?? [],
           travel_scope: (form.capabilities.travel_scope ?? []).join(", "),
           min_event_budget: (form.capabilities.budget_ranges ?? []).join(", "),
-          max_guest_count: 0,
-          minimum_notice_days: 0,
+          max_guest_count: form.max_guest_count ? Number(form.max_guest_count) : null,
+          minimum_notice_days: form.minimum_notice_days ? Number(form.minimum_notice_days) : null,
+          availability: form.availability || null,
+          premium_experience: form.premium_experience.trim() || null,
         }),
       });
 
@@ -1079,6 +1092,53 @@ export default function PartnerApplicationV2() {
             {/* Step 2: Profile */}
             {step === 2 && (
               <div className="space-y-5">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Availability" hint="Optional">
+                    <div className="relative">
+                      <select
+                        value={form.availability}
+                        onChange={(e) => set("availability", e.target.value)}
+                        className={`${input} appearance-none`}
+                      >
+                        <option value="">Select availability</option>
+                        <option value="Available for new enquiries">Available for new enquiries</option>
+                        <option value="Limited availability">Limited availability</option>
+                        <option value="Available from next season">Available from next season</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-4 top-5 text-muted" size={17} />
+                    </div>
+                  </Field>
+
+                  <Field label="Maximum guest count" hint="Optional">
+                    <input
+                      min="1"
+                      type="number"
+                      value={form.max_guest_count}
+                      onChange={(e) => set("max_guest_count", e.target.value)}
+                      className={input}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Minimum notice (days)" hint="Optional">
+                  <input
+                    min="0"
+                    type="number"
+                    value={form.minimum_notice_days}
+                    onChange={(e) => set("minimum_notice_days", e.target.value)}
+                    className={input}
+                  />
+                </Field>
+
+                <Field label="Premium event experience" hint="Optional">
+                  <textarea
+                    rows={4}
+                    value={form.premium_experience}
+                    onChange={(e) => set("premium_experience", e.target.value)}
+                    className={input}
+                  />
+                </Field>
+
                 <Field label="Portfolio website / Google Drive">
                   <input
                     required

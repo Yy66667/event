@@ -44,10 +44,8 @@ class VendorApplication(BaseModel):
     service_cities: list[str]
     travel_scope: str
     min_event_budget: str
-    max_guest_count: int
-    minimum_notice_days: int
     availability: str | None = None
-    premium_experience: str | None = None 
+    premium_experience: str | None = None
     max_guest_count: int | None = None
     minimum_notice_days: int | None = None
     portfolio_highlights: str
@@ -60,4 +58,11 @@ class VendorApplication(BaseModel):
     # fields while the matching engine is expanded to additional partner types.
     capabilities: dict[str, list[str]] = Field(default_factory=dict)
     status: str = "new"
+    internal_notes: list[dict[str, str]] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+
+class AddNoteRequest(BaseModel):
+    author: str
+    note: str
